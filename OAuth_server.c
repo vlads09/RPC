@@ -16,12 +16,82 @@ request_authorization_token_1_svc(authorization *argp, struct svc_req *rqstp)
 	/*
 	 * insert server code here
 	 */
+	printf("BEGIN %s AUTHZ\n", argp->id);
 
+	result = NULL;
 	for (int i = 0; i < clients->size; i++) {
 		if (strcmp(argp->id, clients->clients[i]) == 0) {
 			result = generate_access_token(argp->id);
 			break;
 		}
+	}
+
+	if (result == NULL) {
+		result = "USER_NOT_FOUND";
+	}
+	return &result;
+}
+
+approve_response *
+approve_request_token_1_svc(approve *argp, struct svc_req *rqstp)
+{
+	static approve_response  result;
+
+	/*
+	 * insert server code here
+	 */
+	// strtok verificat permisiunile daca sunt ok
+	// tbc
+	result.authorization_token = calloc(16, sizeof(char));
+	result.permissions = calloc(50, sizeof(char));
+
+	strcpy(result.authorization_token, argp->authorization_token);
+	char *permission = permissions->permissions[(permissions->current)++];
+	char *permission_aux = calloc(50, sizeof(char));
+	strcpy(permission_aux, permission);
+
+	char* token;
+    token = strtok(permission_aux, ",");
+    int count = 0;
+	int is_there = 0;
+    while (token != NULL) {
+      if (count % 2 == 0) {
+		for (int i = 0; i < resources->size; i++) {
+			if(strcmp(token, resources->resources[i]) == 0) {
+				is_there = 1;
+				break;
+			}
+		}
+		if (is_there == 0) {
+			result.verify = 2;
+			strcpy(result.permissions, "REQUEST_DENIED");
+			return &result;
+		}
+		is_there = 0;
+	  }
+      count++;
+      token = strtok(NULL, ",");
+    }
+
+	result.verify = 1;
+	strcpy(result.permissions, permission);
+	return &result;
+}
+
+access_response *
+request_access_token_1_svc(access *argp, struct svc_req *rqstp)
+{
+	static access_response  result;
+
+	/*
+	 * insert server code here
+	 */
+	if (argp->authorization_token.verify == 1) {
+		result.access_token = generate_access_token(argp->authorization_token.authorization_token);
+		result.refresh_token = generate_access_token(result.access_token);
+		result.valability = valability;
+		printf("  RequestToken = %s\n", argp->authorization_token.authorization_token);
+		printf("  AccessToken = %s\n", result.access_token);
 	}
 	return &result;
 }

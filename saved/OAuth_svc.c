@@ -61,8 +61,11 @@ grade_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 int
 main (int argc, char **argv)
 {
-	char *path = argv[1];
-	get_clients(path);
+	char *clients_path = argv[1];
+	char *resources_path = argv[2];
+
+	get_clients(clients_path);
+	get_resources(resources_path);
 	register SVCXPRT *transp;
 
 	pmap_unset (GRADE_PROG, GRADE_VERS);

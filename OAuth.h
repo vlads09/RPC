@@ -16,9 +16,34 @@ extern "C" {
 
 struct authorization {
 	char *id;
-	char *refresh;
 };
 typedef struct authorization authorization;
+
+struct approve {
+	char *authorization_token;
+};
+typedef struct approve approve;
+
+struct approve_response {
+	char *authorization_token;
+	int verify;
+	char *permissions;
+};
+typedef struct approve_response approve_response;
+
+struct access {
+	char *id;
+	char *refresh;
+	approve_response authorization_token;
+};
+typedef struct access access;
+
+struct access_response {
+	char *access_token;
+	char *refresh_token;
+	int valability;
+};
+typedef struct access_response access_response;
 
 #define GRADE_PROG 0x31234567
 #define GRADE_VERS 1
@@ -27,12 +52,24 @@ typedef struct authorization authorization;
 #define request_authorization_token 1
 extern  char ** request_authorization_token_1(authorization *, CLIENT *);
 extern  char ** request_authorization_token_1_svc(authorization *, struct svc_req *);
+#define approve_request_token 2
+extern  approve_response * approve_request_token_1(approve *, CLIENT *);
+extern  approve_response * approve_request_token_1_svc(approve *, struct svc_req *);
+#define request_access_token 3
+extern  access_response * request_access_token_1(access *, CLIENT *);
+extern  access_response * request_access_token_1_svc(access *, struct svc_req *);
 extern int grade_prog_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
 
 #else /* K&R C */
 #define request_authorization_token 1
 extern  char ** request_authorization_token_1();
 extern  char ** request_authorization_token_1_svc();
+#define approve_request_token 2
+extern  approve_response * approve_request_token_1();
+extern  approve_response * approve_request_token_1_svc();
+#define request_access_token 3
+extern  access_response * request_access_token_1();
+extern  access_response * request_access_token_1_svc();
 extern int grade_prog_1_freeresult ();
 #endif /* K&R C */
 
@@ -40,9 +77,17 @@ extern int grade_prog_1_freeresult ();
 
 #if defined(__STDC__) || defined(__cplusplus)
 extern  bool_t xdr_authorization (XDR *, authorization*);
+extern  bool_t xdr_approve (XDR *, approve*);
+extern  bool_t xdr_approve_response (XDR *, approve_response*);
+extern  bool_t xdr_access (XDR *, access*);
+extern  bool_t xdr_access_response (XDR *, access_response*);
 
 #else /* K&R C */
 extern bool_t xdr_authorization ();
+extern bool_t xdr_approve ();
+extern bool_t xdr_approve_response ();
+extern bool_t xdr_access ();
+extern bool_t xdr_access_response ();
 
 #endif /* K&R C */
 

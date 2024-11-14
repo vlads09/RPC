@@ -23,3 +23,33 @@ request_authorization_token_1(authorization *argp, CLIENT *clnt)
 	}
 	return (&clnt_res);
 }
+
+approve_response *
+approve_request_token_1(approve *argp, CLIENT *clnt)
+{
+	static approve_response clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof(clnt_res));
+	if (clnt_call (clnt, approve_request_token,
+		(xdrproc_t) xdr_approve, (caddr_t) argp,
+		(xdrproc_t) xdr_approve_response, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}
+
+access_response *
+request_access_token_1(access *argp, CLIENT *clnt)
+{
+	static access_response clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof(clnt_res));
+	if (clnt_call (clnt, request_access_token,
+		(xdrproc_t) xdr_access, (caddr_t) argp,
+		(xdrproc_t) xdr_access_response, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}

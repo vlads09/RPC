@@ -12,7 +12,57 @@ xdr_authorization (XDR *xdrs, authorization *objp)
 
 	 if (!xdr_string (xdrs, &objp->id, 16))
 		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+xdr_approve (XDR *xdrs, approve *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->authorization_token, 16))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+xdr_approve_response (XDR *xdrs, approve_response *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->authorization_token, 16))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->verify))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->permissions, 50))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+xdr_access (XDR *xdrs, access *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->id, 16))
+		 return FALSE;
 	 if (!xdr_string (xdrs, &objp->refresh, 2))
+		 return FALSE;
+	 if (!xdr_approve_response (xdrs, &objp->authorization_token))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+xdr_access_response (XDR *xdrs, access_response *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->access_token, 16))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->refresh_token, 16))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->valability))
 		 return FALSE;
 	return TRUE;
 }
