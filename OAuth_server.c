@@ -17,7 +17,7 @@ request_authorization_token_1_svc(authorization *argp, struct svc_req *rqstp)
 	 * insert server code here
 	 */
 	printf("BEGIN %s AUTHZ\n", argp->id);
-
+	fflush(stdout);
 	result = NULL;
 	for (int i = 0; i < clients->size; i++) {
 		if (strcmp(argp->id, clients->clients[i]) == 0) {
@@ -28,6 +28,9 @@ request_authorization_token_1_svc(authorization *argp, struct svc_req *rqstp)
 
 	if (result == NULL) {
 		result = "USER_NOT_FOUND";
+	} else {
+		printf("  RequestToken = %s\n", result);
+	fflush(stdout);
 	}
 	return &result;
 }
@@ -75,6 +78,7 @@ approve_request_token_1_svc(approve *argp, struct svc_req *rqstp)
 
 	result.verify = 1;
 	strcpy(result.permissions, permission);
+
 	return &result;
 }
 
@@ -86,12 +90,31 @@ request_access_token_1_svc(access *argp, struct svc_req *rqstp)
 	/*
 	 * insert server code here
 	 */
-	if (argp->authorization_token.verify == 1) {
-		result.access_token = generate_access_token(argp->authorization_token.authorization_token);
-		result.refresh_token = generate_access_token(result.access_token);
-		result.valability = valability;
-		printf("  RequestToken = %s\n", argp->authorization_token.authorization_token);
-		printf("  AccessToken = %s\n", result.access_token);
+
+	result.access_token = generate_access_token(argp->authorization_token.authorization_token);
+	if (atoi(argp->refresh) == 1) {
+		result.refresh_token = generate_access_token(result.access_token);	
+	} else {
+		result.refresh_token = calloc(16, sizeof(char));
 	}
+	result.valability = valability;
+	printf("  AccessToken = %s\n", result.access_token);
+	fflush(stdout);
+
+	if (cl_info == NULL) {
+		cl_info = init_client_info();
+		size_cl_info = 0;
+	}
+
+	strcpy(cl_info[size_cl_info].id, argp->id);
+	strcpy(cl_info[size_cl_info].permissions, argp->authorization_token.permissions);
+	strcpy(cl_info[size_cl_info].access_token, result.access_token);
+
+	if (atoi(argp->refresh) == 1) {
+		strcpy(cl_info[size_cl_info].refresh_token, result.refresh_token);
+	}
+	strcpy(cl_info[size_cl_info].refresh, argp->refresh);
+	cl_info[size_cl_info++].valability = valability;
+	
 	return &result;
 }

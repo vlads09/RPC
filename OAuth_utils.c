@@ -3,7 +3,14 @@
 ClientsDB *clients;
 Resources *resources;
 Permissions *permissions;
+ClientInfo *cl_info;
+int size_cl_info;
 int valability;
+
+ClientInfo *init_client_info() {
+  ClientInfo *c = calloc(50, sizeof(ClientInfo));
+  return c;
+}
 
 void get_clients(char* path) {
   clients = calloc(1, sizeof(ClientsDB));
