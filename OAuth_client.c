@@ -10,6 +10,7 @@
 ClientSideInfo *clients_info;
 int current_clients_info = 0;
 
+
 void
 grade_prog_1(char *host, char *id, char *refresh)
 {
@@ -58,24 +59,35 @@ grade_prog_1(char *host, char *id, char *refresh)
 			strcpy(request_access_token_1_arg.authorization_token.authorization_token, *result_1);
 			strcpy(request_access_token_1_arg.authorization_token.permissions, result_2->permissions);
 			strcpy(request_access_token_1_arg.id, id);
+			strcpy(request_access_token_1_arg.refresh, refresh);
 			request_access_token_1_arg.authorization_token.verify = result_2->verify;
 
 			result_3 = request_access_token_1(&request_access_token_1_arg, clnt);
 			if (result_3 == (access_response *) NULL) {
 				clnt_perror (clnt, "call failed");
 			} else {
-				printf("%s -> %s\n", result_2->authorization_token, result_3->access_token);
+				if (atoi(refresh) == 0) {
+					printf("%s -> %s\n", result_2->authorization_token, result_3->access_token);	
+				} else if (atoi(refresh) == 1) {
+					printf("%s -> %s,%s\n", result_2->authorization_token, result_3->access_token, result_3->refresh_token);
+				}
 
 				int already_exists = 0;
 				for (int i = 0; i < current_clients_info; i++) {
 					if (strcmp(id, clients_info[i].id) == 0) {
 						already_exists = 1;
 						strcpy(clients_info[i].access_token, result_3->access_token);
+						strcpy(clients_info[i].refresh_token, result_3->refresh_token);
+						clients_info[i].refresh = atoi(refresh);
+						clients_info[i].valability = result_3->valability;
 					}
 				}
 				if (already_exists == 0) {
 					strcpy(clients_info[current_clients_info].id, id);
-					strcpy(clients_info[current_clients_info++].access_token, result_3->access_token);
+					strcpy(clients_info[current_clients_info].access_token, result_3->access_token);
+					strcpy(clients_info[current_clients_info].refresh_token, result_3->refresh_token);
+					clients_info[current_clients_info].refresh = atoi(refresh);
+					clients_info[current_clients_info++].valability = result_3->valability;
 				}
 			}
 		}
@@ -125,6 +137,45 @@ grade_prog_2(char *host, char *op, char *resource, char *id, char *access_token)
 }
 
 
+void
+grade_prog_3(char *host, char *id, char *refresh_token)
+{
+	CLIENT *clnt;
+	refresh_output  *result_1;
+	refresh_input  get_new_token_3_arg;
+
+#ifndef	DEBUG
+	clnt = clnt_create (host, GRADE_PROG, GRADE_VERS_3, "udp");
+	if (clnt == NULL) {
+		clnt_pcreateerror (host);
+		exit (1);
+	}
+#endif	/* DEBUG */
+	get_new_token_3_arg.id = calloc(16, sizeof(char));
+	get_new_token_3_arg.refresh = calloc(16, sizeof(char));
+
+	strcpy(get_new_token_3_arg.id, id);
+	strcpy(get_new_token_3_arg.refresh, refresh_token);
+
+	result_1 = get_new_token_3(&get_new_token_3_arg, clnt);
+	if (result_1 == (refresh_output *) NULL) {
+		clnt_perror (clnt, "call failed");
+	}
+
+	for (int i = 0; i < current_clients_info; i++) {
+		if (strcmp(id, clients_info[i].id) == 0) {
+			strcpy(clients_info[i].access_token, result_1->access_token);
+			strcpy(clients_info[i].refresh_token, result_1->refresh_token);
+			clients_info[i].valability = result_1->valability;
+		}
+	}
+
+#ifndef	DEBUG
+	clnt_destroy (clnt);
+#endif	 /* DEBUG */
+}
+
+
 int
 main (int argc, char *argv[])
 {
@@ -147,12 +198,18 @@ main (int argc, char *argv[])
 
 		if (strcmp(action, "REQUEST") == 0) {
 			grade_prog_1(host, id, details);
-		} else if (strcmp(action, "READ") == 0 || strcmp(action, "MODIFY") == 0 ||
-					strcmp(action, "EXECUTE") == 0 || strcmp(action, "DELETE") == 0 ||
-					strcmp(action, "INSERT") == 0) {
+		} else {
+			for (int j = 0; j < current_clients_info; j++) {
+				if (strcmp(clients_info[j].id, id) == 0 && clients_info[j].valability == 0 
+					&& clients_info[j].refresh == 1) {
+						grade_prog_3(host, id, clients_info[j].refresh_token);
+						break;
+					}
+			}
 			int found = 0;
 			for (int j = 0; j < current_clients_info; j++) {
 				if (strcmp(id, clients_info[j].id) == 0) {
+					clients_info[j].valability--;
 					grade_prog_2(host, action, details, id, clients_info[j].access_token);
 					found = 1;
 					break;

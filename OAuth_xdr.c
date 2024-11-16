@@ -80,3 +80,29 @@ xdr_action (XDR *xdrs, action *objp)
 		 return FALSE;
 	return TRUE;
 }
+
+bool_t
+xdr_refresh_input (XDR *xdrs, refresh_input *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->id, 16))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->refresh, 16))
+		 return FALSE;
+	return TRUE;
+}
+
+bool_t
+xdr_refresh_output (XDR *xdrs, refresh_output *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->access_token, 16))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->refresh_token, 16))
+		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->valability))
+		 return FALSE;
+	return TRUE;
+}

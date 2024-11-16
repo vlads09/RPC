@@ -52,6 +52,19 @@ struct action {
 };
 typedef struct action action;
 
+struct refresh_input {
+	char *id;
+	char *refresh;
+};
+typedef struct refresh_input refresh_input;
+
+struct refresh_output {
+	char *access_token;
+	char *refresh_token;
+	int valability;
+};
+typedef struct refresh_output refresh_output;
+
 #define GRADE_PROG 0x31234567
 #define GRADE_VERS 1
 
@@ -93,6 +106,20 @@ extern  char ** validate_delegated_action_2();
 extern  char ** validate_delegated_action_2_svc();
 extern int grade_prog_2_freeresult ();
 #endif /* K&R C */
+#define GRADE_VERS_3 3
+
+#if defined(__STDC__) || defined(__cplusplus)
+#define get_new_token 1
+extern  refresh_output * get_new_token_3(refresh_input *, CLIENT *);
+extern  refresh_output * get_new_token_3_svc(refresh_input *, struct svc_req *);
+extern int grade_prog_3_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
+
+#else /* K&R C */
+#define get_new_token 1
+extern  refresh_output * get_new_token_3();
+extern  refresh_output * get_new_token_3_svc();
+extern int grade_prog_3_freeresult ();
+#endif /* K&R C */
 
 /* the xdr functions */
 
@@ -103,6 +130,8 @@ extern  bool_t xdr_approve_response (XDR *, approve_response*);
 extern  bool_t xdr_access (XDR *, access*);
 extern  bool_t xdr_access_response (XDR *, access_response*);
 extern  bool_t xdr_action (XDR *, action*);
+extern  bool_t xdr_refresh_input (XDR *, refresh_input*);
+extern  bool_t xdr_refresh_output (XDR *, refresh_output*);
 
 #else /* K&R C */
 extern bool_t xdr_authorization ();
@@ -111,6 +140,8 @@ extern bool_t xdr_approve_response ();
 extern bool_t xdr_access ();
 extern bool_t xdr_access_response ();
 extern bool_t xdr_action ();
+extern bool_t xdr_refresh_input ();
+extern bool_t xdr_refresh_output ();
 
 #endif /* K&R C */
 

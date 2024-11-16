@@ -30,6 +30,17 @@ struct action {
     string access_token<16>;
 };
 
+struct refresh_input {
+    string id<16>;
+    string refresh<16>;
+};
+
+struct refresh_output {
+    string access_token<16>;
+    string refresh_token<16>;
+    int valability;
+};
+
 program GRADE_PROG {
     version GRADE_VERS {
         string request_authorization_token(authorization) = 1;
@@ -40,4 +51,8 @@ program GRADE_PROG {
     version GRADE_VERS_2 {
         string validate_delegated_action(action)= 1;
     } = 2;
+
+    version GRADE_VERS_3 {
+        refresh_output get_new_token(refresh_input) = 1;
+    } = 3;
 } = 0x31234567;

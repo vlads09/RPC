@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "*.c": "c",
-        "oauth_utils.h": "c"
+        "oauth_utils.h": "c",
+        "string.h": "c"
     }
 }

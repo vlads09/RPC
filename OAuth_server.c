@@ -112,6 +112,8 @@ request_access_token_1_svc(access *argp, struct svc_req *rqstp)
 			strcpy(cl_info[i].access_token, result.access_token);
 			if (atoi(argp->refresh) == 1) {
 				strcpy(cl_info[i].refresh_token, result.refresh_token);
+				printf("  RefreshToken = %s\n", result.refresh_token);
+				fflush(stdout);
 			}
 			strcpy(cl_info[i].refresh, argp->refresh);
 			cl_info[i].valability = valability;
@@ -125,6 +127,8 @@ request_access_token_1_svc(access *argp, struct svc_req *rqstp)
 
 	if (atoi(argp->refresh) == 1) {
 		strcpy(cl_info[size_cl_info].refresh_token, result.refresh_token);
+		printf("  RefreshToken = %s\n", result.refresh_token);
+		fflush(stdout);
 	}
 	strcpy(cl_info[size_cl_info].refresh, argp->refresh);
 	cl_info[size_cl_info++].valability = valability;
@@ -216,5 +220,40 @@ validate_delegated_action_2_svc(action *argp, struct svc_req *rqstp)
 	strcpy(result, "PERMISSION_DENIED");
 	printf("DENY (%s,%s,,0)\n", argp->operation, argp->source);
 	fflush(stdout);
+	return &result;
+}
+
+refresh_output *
+get_new_token_3_svc(refresh_input *argp, struct svc_req *rqstp)
+{
+	static refresh_output  result;
+
+	/*
+	 * insert server code here
+	 */
+	result.access_token = calloc(16, sizeof(char));
+	result.refresh_token = calloc(16, sizeof(char));
+	result.valability = valability;
+
+	printf("BEGIN %s AUTHZ REFRESH\n", argp->id);
+	fflush(stdout);
+
+	for (int i = 0; i < size_cl_info; i++) {
+		if (strcmp(argp->id, cl_info[i].id) == 0 && strcmp(argp->refresh, cl_info[i].refresh_token) == 0) {
+			cl_info[i].valability = valability;
+			strcpy(cl_info[i].access_token, generate_access_token(argp->refresh));
+			strcpy(cl_info[i].refresh_token, generate_access_token(cl_info[i].access_token));
+
+			strcpy(result.access_token, cl_info[i].access_token);
+			strcpy(result.refresh_token, cl_info[i].refresh_token);
+
+			printf("  AccessToken = %s\n", result.access_token);
+			fflush(stdout);
+			printf("  RefreshToken = %s\n", result.refresh_token);
+			fflush(stdout);
+			break;
+		}
+	}
+
 	return &result;
 }

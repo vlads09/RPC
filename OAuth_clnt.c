@@ -68,3 +68,18 @@ validate_delegated_action_2(action *argp, CLIENT *clnt)
 	}
 	return (&clnt_res);
 }
+
+refresh_output *
+get_new_token_3(refresh_input *argp, CLIENT *clnt)
+{
+	static refresh_output clnt_res;
+
+	memset((char *)&clnt_res, 0, sizeof(clnt_res));
+	if (clnt_call (clnt, get_new_token,
+		(xdrproc_t) xdr_refresh_input, (caddr_t) argp,
+		(xdrproc_t) xdr_refresh_output, (caddr_t) &clnt_res,
+		TIMEOUT) != RPC_SUCCESS) {
+		return (NULL);
+	}
+	return (&clnt_res);
+}

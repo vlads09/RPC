@@ -106,6 +106,19 @@ request_access_token_1_svc(access *argp, struct svc_req *rqstp)
 		size_cl_info = 0;
 	}
 
+	for (int i = 0; i < size_cl_info; i++) {
+		if (strcmp(argp->id, cl_info[i].id) == 0) {
+			strcpy(cl_info[i].permissions, argp->authorization_token.permissions);
+			strcpy(cl_info[i].access_token, result.access_token);
+			if (atoi(argp->refresh) == 1) {
+				strcpy(cl_info[i].refresh_token, result.refresh_token);
+			}
+			strcpy(cl_info[i].refresh, argp->refresh);
+			cl_info[i].valability = valability;
+
+			return &result;
+		}
+	}
 	strcpy(cl_info[size_cl_info].id, argp->id);
 	strcpy(cl_info[size_cl_info].permissions, argp->authorization_token.permissions);
 	strcpy(cl_info[size_cl_info].access_token, result.access_token);
@@ -116,5 +129,92 @@ request_access_token_1_svc(access *argp, struct svc_req *rqstp)
 	strcpy(cl_info[size_cl_info].refresh, argp->refresh);
 	cl_info[size_cl_info++].valability = valability;
 	
+	return &result;
+}
+
+char **
+validate_delegated_action_2_svc(action *argp, struct svc_req *rqstp)
+{
+	static char * result;
+
+	/*
+	 * insert server code here
+	 */
+	result = calloc(30, sizeof(char));
+
+	if (size_cl_info != 0) {
+		for (int i = 0; i < size_cl_info; i++) {
+			if (strcmp(argp->access_token, cl_info[i].access_token) == 0) {
+				if (cl_info[i].valability > 0) {
+					(cl_info[i].valability)--;
+
+					int found_resource = 0;
+					for (int j = 0; j < resources->size; j++) {
+						if (strcmp(argp->source, resources->resources[j]) == 0) {
+							found_resource = 1;
+							break;
+						}
+					}
+					if (found_resource == 0) {
+						strcpy(result, "RESOURCE_NOT_FOUND");
+						printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
+												cl_info[i].valability);
+						fflush(stdout);
+						return &result;
+					}
+					
+					char *resources_aux = calloc(50, sizeof(char));
+					strcpy(resources_aux, cl_info[i].permissions);
+
+					char* token;
+    				token = strtok(resources_aux, ",");
+
+					int count = 0;
+					while (token != NULL) {
+						if (count % 2 == 0) {
+							if (strcmp(argp->source, token) == 0) {
+								token = strtok(NULL, ",");
+
+								for (int j = 0; j < strlen(token); j++) {
+									if (token[j] == 'X') {
+										token[j] = 'E';
+									}
+									if (argp->operation[0] == token[j]) {
+										strcpy(result, "PERMISSION_GRANTED");
+										printf("PERMIT (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
+											cl_info[i].valability);
+										fflush(stdout);
+										return &result;
+									}
+								}
+
+								strcpy(result, "OPERATION_NOT_PERMITTED");
+								printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
+											cl_info[i].valability);
+								fflush(stdout);
+								return &result;
+							}
+						}
+						
+						token = strtok(NULL, ",");
+						count++;
+					}
+					strcpy(result, "OPERATION_NOT_PERMITTED");
+					printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
+								cl_info[i].valability);
+					fflush(stdout);
+					return &result;
+				}
+				strcpy(result, "TOKEN_EXPIRED");
+				printf("DENY (%s,%s,,%d)\n", argp->operation, argp->source, cl_info[i].valability);
+				fflush(stdout);
+				return &result;
+			}
+		}
+	}
+
+	strcpy(result, "PERMISSION_DENIED");
+	printf("DENY (%s,%s,,0)\n", argp->operation, argp->source);
+	fflush(stdout);
 	return &result;
 }
