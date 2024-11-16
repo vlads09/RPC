@@ -22,6 +22,8 @@ grade_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 {
 	union {
 		authorization request_authorization_token_1_arg;
+		approve approve_request_token_1_arg;
+		access request_access_token_1_arg;
 	} argument;
 	char *result;
 	xdrproc_t _xdr_argument, _xdr_result;
@@ -36,6 +38,18 @@ grade_prog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 		_xdr_argument = (xdrproc_t) xdr_authorization;
 		_xdr_result = (xdrproc_t) xdr_wrapstring;
 		local = (char *(*)(char *, struct svc_req *)) request_authorization_token_1_svc;
+		break;
+
+	case approve_request_token:
+		_xdr_argument = (xdrproc_t) xdr_approve;
+		_xdr_result = (xdrproc_t) xdr_approve_response;
+		local = (char *(*)(char *, struct svc_req *)) approve_request_token_1_svc;
+		break;
+
+	case request_access_token:
+		_xdr_argument = (xdrproc_t) xdr_access;
+		_xdr_result = (xdrproc_t) xdr_access_response;
+		local = (char *(*)(char *, struct svc_req *)) request_access_token_1_svc;
 		break;
 
 	default:
@@ -63,9 +77,13 @@ main (int argc, char **argv)
 {
 	char *clients_path = argv[1];
 	char *resources_path = argv[2];
+	char *approvals_path = argv[3];
+	valability = atoi(argv[4]);
 
 	get_clients(clients_path);
 	get_resources(resources_path);
+	read_permissions(approvals_path);
+	
 	register SVCXPRT *transp;
 
 	pmap_unset (GRADE_PROG, GRADE_VERS);

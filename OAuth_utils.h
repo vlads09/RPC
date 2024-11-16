@@ -38,6 +38,12 @@ typedef struct Permissions
     size_t current;
 } Permissions;
 
+typedef struct ClientSideInfo
+{
+    char id[16];
+    char access_token[16];
+} ClientSideInfo;
+
 void get_clients(char *path);
 void get_resources(char *path);
 ClientOrder* get_orders(char *path, int *i);

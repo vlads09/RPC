@@ -16,12 +16,105 @@ request_authorization_token_1_svc(authorization *argp, struct svc_req *rqstp)
 	/*
 	 * insert server code here
 	 */
-
+	printf("BEGIN %s AUTHZ\n", argp->id);
+	fflush(stdout);
+	result = NULL;
 	for (int i = 0; i < clients->size; i++) {
 		if (strcmp(argp->id, clients->clients[i]) == 0) {
-			strcpy(result, generate_access_token(argp->id));
+			result = generate_access_token(argp->id);
 			break;
 		}
 	}
+
+	if (result == NULL) {
+		result = "USER_NOT_FOUND";
+	} else {
+		printf("  RequestToken = %s\n", result);
+	fflush(stdout);
+	}
+	return &result;
+}
+
+approve_response *
+approve_request_token_1_svc(approve *argp, struct svc_req *rqstp)
+{
+	static approve_response  result;
+
+	/*
+	 * insert server code here
+	 */
+	// strtok verificat permisiunile daca sunt ok
+	// tbc
+	result.authorization_token = calloc(16, sizeof(char));
+	result.permissions = calloc(50, sizeof(char));
+
+	strcpy(result.authorization_token, argp->authorization_token);
+	char *permission = permissions->permissions[(permissions->current)++];
+	char *permission_aux = calloc(50, sizeof(char));
+	strcpy(permission_aux, permission);
+
+	char* token;
+    token = strtok(permission_aux, ",");
+    int count = 0;
+	int is_there = 0;
+    while (token != NULL) {
+      if (count % 2 == 0) {
+		for (int i = 0; i < resources->size; i++) {
+			if(strcmp(token, resources->resources[i]) == 0) {
+				is_there = 1;
+				break;
+			}
+		}
+		if (is_there == 0) {
+			result.verify = 2;
+			strcpy(result.permissions, "REQUEST_DENIED");
+			return &result;
+		}
+		is_there = 0;
+	  }
+      count++;
+      token = strtok(NULL, ",");
+    }
+
+	result.verify = 1;
+	strcpy(result.permissions, permission);
+
+	return &result;
+}
+
+access_response *
+request_access_token_1_svc(access *argp, struct svc_req *rqstp)
+{
+	static access_response  result;
+
+	/*
+	 * insert server code here
+	 */
+
+	result.access_token = generate_access_token(argp->authorization_token.authorization_token);
+	if (atoi(argp->refresh) == 1) {
+		result.refresh_token = generate_access_token(result.access_token);	
+	} else {
+		result.refresh_token = calloc(16, sizeof(char));
+	}
+	result.valability = valability;
+	printf("  AccessToken = %s\n", result.access_token);
+	fflush(stdout);
+
+	if (cl_info == NULL) {
+		cl_info = init_client_info();
+		size_cl_info = 0;
+	}
+
+	strcpy(cl_info[size_cl_info].id, argp->id);
+	strcpy(cl_info[size_cl_info].permissions, argp->authorization_token.permissions);
+	strcpy(cl_info[size_cl_info].access_token, result.access_token);
+
+	if (atoi(argp->refresh) == 1) {
+		strcpy(cl_info[size_cl_info].refresh_token, result.refresh_token);
+	}
+	strcpy(cl_info[size_cl_info].refresh, argp->refresh);
+	cl_info[size_cl_info++].valability = valability;
+	
 	return &result;
 }

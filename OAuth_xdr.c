@@ -66,3 +66,17 @@ xdr_access_response (XDR *xdrs, access_response *objp)
 		 return FALSE;
 	return TRUE;
 }
+
+bool_t
+xdr_action (XDR *xdrs, action *objp)
+{
+	register int32_t *buf;
+
+	 if (!xdr_string (xdrs, &objp->operation, 10))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->source, 15))
+		 return FALSE;
+	 if (!xdr_string (xdrs, &objp->access_token, 16))
+		 return FALSE;
+	return TRUE;
+}

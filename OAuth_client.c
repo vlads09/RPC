@@ -7,6 +7,9 @@
 #include "OAuth.h"
 #include "OAuth_utils.h"
 
+ClientSideInfo *clients_info;
+int current_clients_info = 0;
+
 void
 grade_prog_1(char *host, char *id, char *refresh)
 {
@@ -62,6 +65,18 @@ grade_prog_1(char *host, char *id, char *refresh)
 				clnt_perror (clnt, "call failed");
 			} else {
 				printf("%s -> %s\n", result_2->authorization_token, result_3->access_token);
+
+				int already_exists = 0;
+				for (int i = 0; i < current_clients_info; i++) {
+					if (strcmp(id, clients_info[i].id) == 0) {
+						already_exists = 1;
+						strcpy(clients_info[i].access_token, result_3->access_token);
+					}
+				}
+				if (already_exists == 0) {
+					strcpy(clients_info[current_clients_info].id, id);
+					strcpy(clients_info[current_clients_info++].access_token, result_3->access_token);
+				}
 			}
 		}
 	} else {
@@ -69,6 +84,40 @@ grade_prog_1(char *host, char *id, char *refresh)
 	}
 	
 
+	
+#ifndef	DEBUG
+	clnt_destroy (clnt);
+#endif	 /* DEBUG */
+}
+
+
+void
+grade_prog_2(char *host, char *op, char *resource, char *id, char *access_token)
+{
+	CLIENT *clnt;
+	char * *result_1;
+	action  validate_delegated_action_2_arg;
+
+#ifndef	DEBUG
+	clnt = clnt_create (host, GRADE_PROG, GRADE_VERS_2, "udp");
+	if (clnt == NULL) {
+		clnt_pcreateerror (host);
+		exit (1);
+	}
+#endif	/* DEBUG */
+	validate_delegated_action_2_arg.access_token = calloc(16, sizeof(char));
+	validate_delegated_action_2_arg.operation = calloc(10, sizeof(char));
+	validate_delegated_action_2_arg.source = calloc(15, sizeof(char));
+
+	strcpy(validate_delegated_action_2_arg.access_token, access_token);
+	strcpy(validate_delegated_action_2_arg.operation, op);
+	strcpy(validate_delegated_action_2_arg.source, resource);
+	
+	result_1 = validate_delegated_action_2(&validate_delegated_action_2_arg, clnt);
+	if (result_1 == (char **) NULL) {
+		clnt_perror (clnt, "call failed");
+	}
+	printf("%s\n", *result_1);
 	
 #ifndef	DEBUG
 	clnt_destroy (clnt);
@@ -89,8 +138,8 @@ main (int argc, char *argv[])
 	path = argv[2];
 
 	int size_orders = 0;
-	ClientOrder* orders = get_orders(path, &size_orders);
-
+	ClientOrder *orders = get_orders(path, &size_orders);
+	clients_info = calloc(50, sizeof(ClientSideInfo));
 	for (int i = 0; i< size_orders; i++) {
 		char *id = orders[i].id;
 		char *action = orders[i].action;
@@ -98,6 +147,20 @@ main (int argc, char *argv[])
 
 		if (strcmp(action, "REQUEST") == 0) {
 			grade_prog_1(host, id, details);
+		} else if (strcmp(action, "READ") == 0 || strcmp(action, "MODIFY") == 0 ||
+					strcmp(action, "EXECUTE") == 0 || strcmp(action, "DELETE") == 0 ||
+					strcmp(action, "INSERT") == 0) {
+			int found = 0;
+			for (int j = 0; j < current_clients_info; j++) {
+				if (strcmp(id, clients_info[j].id) == 0) {
+					grade_prog_2(host, action, details, id, clients_info[j].access_token);
+					found = 1;
+					break;
+				}
+			}
+			if (found == 0) {
+				grade_prog_2(host, action, details, id, "");
+			}
 		}
 	}
 
