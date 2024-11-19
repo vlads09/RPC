@@ -7,15 +7,12 @@ Disclaimer: Application was made on Ubuntu 24.04.1 LTS.
             There will not be any rpcgen to be made.
 
 Tests passed: 7/7
-
         This is a simulation of an OAuth authorization system of a client/server application
 using the Remote Procedure Call (RPC).
-
         The interface has been explained in the OAuth.x for further more details.
-
         How does it work?
-
-    Using the functions and the structures I declared in Server_utils.h, firstly, in OAuth_svc.c
+        
+  Using the functions and the structures I declared in Server_utils.h, firstly, in OAuth_svc.c
 it has been saved information from the database, such as the userIDs, server's resources and
 the upcoming approvals which are related with the receiving access token process.
     After that, for the client side, I declared helpful functions and structures in Client_utils.h.
