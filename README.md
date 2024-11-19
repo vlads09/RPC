@@ -24,7 +24,7 @@ element being a ClientOrder type. ClientOrder saves info about the ID, the actio
 given to the server to process and the necessary details, according to the action made. It goes
 through each order and by the action type, there are three functions made from the OAuth.x:
 
-    1. grade_prog_1 represents the process where an user wants to have access to the resources of
+  1. grade_prog_1 represents the process where an user wants to have access to the resources of
 the server. As input, the ID and the refresh type (activated or deactivated) were given. First step 
 is to get the authorization token from the server. The client only needs to give the ID and the server
 will check if the user is in the database. If so, then an authorization token will be given back, else,
@@ -39,7 +39,7 @@ the access token. From the server side, all the information throughout this proc
 on a list of ClientInfo type and from the client side, the ID, the access token, the valability and
 the refresh token (if the user opted for one) will be saved.
 
-    2. grade_prog_2 represents the part where server will take care of the client's order which will
+  2. grade_prog_2 represents the part where server will take care of the client's order which will
 be about the actions made by the user. As input, the userID, the action, the resource and the access 
 token are important. In order to validate the action, the server needs to check first if the user ID
 is on the list which has all the information. If there is no user to be found, then the request will
@@ -50,7 +50,7 @@ not be permitted by the server. If it was a success, then it will check if the o
 user's permission. If not, then the operation will not be permitted by the server. In the end, if
 the operation of the user is available, then the server will give access granted to it.
 
-    3. grade_prog_3 represents the case if the access_token is going to expire and the user
+  3. grade_prog_3 represents the case if the access_token is going to expire and the user
 activated the refresh option. For this, the input needed was the user ID and the refresh token.
 First the server checks if the user ID and the refresh token corresponds with the server's info.
 Then, the procedure is a shorter version of grade_prog_1, this time it will only generate the tokens
