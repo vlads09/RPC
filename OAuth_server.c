@@ -5,255 +5,202 @@
  */
 
 #include "OAuth.h"
-#include "OAuth_utils.h"
+#include "Server_utils.h"
 #include "token.h"
 
-char **
-request_authorization_token_1_svc(authorization *argp, struct svc_req *rqstp)
-{
-	static char * result;
+char **request_authorization_token_1_svc(authorization *argp,
+                                         struct svc_req *rqstp) {
+  static char *result;
 
-	/*
-	 * insert server code here
-	 */
-	printf("BEGIN %s AUTHZ\n", argp->id);
-	fflush(stdout);
-	result = NULL;
-	for (int i = 0; i < clients->size; i++) {
-		if (strcmp(argp->id, clients->clients[i]) == 0) {
-			result = generate_access_token(argp->id);
-			break;
-		}
-	}
+  /*
+   * insert server code here
+   */
+  printf("BEGIN %s AUTHZ\n", argp->id);
+  fflush(stdout);
 
-	if (result == NULL) {
-		result = "USER_NOT_FOUND";
-	} else {
-		printf("  RequestToken = %s\n", result);
-	fflush(stdout);
-	}
-	return &result;
-}
-
-approve_response *
-approve_request_token_1_svc(approve *argp, struct svc_req *rqstp)
-{
-	static approve_response  result;
-
-	/*
-	 * insert server code here
-	 */
-	// strtok verificat permisiunile daca sunt ok
-	// tbc
-	result.authorization_token = calloc(16, sizeof(char));
-	result.permissions = calloc(50, sizeof(char));
-
-	strcpy(result.authorization_token, argp->authorization_token);
-	char *permission = permissions->permissions[(permissions->current)++];
-	char *permission_aux = calloc(50, sizeof(char));
-	strcpy(permission_aux, permission);
-
-	char* token;
-    token = strtok(permission_aux, ",");
-    int count = 0;
-	int is_there = 0;
-    while (token != NULL) {
-      if (count % 2 == 0) {
-		for (int i = 0; i < resources->size; i++) {
-			if(strcmp(token, resources->resources[i]) == 0) {
-				is_there = 1;
-				break;
-			}
-		}
-		if (is_there == 0) {
-			result.verify = 2;
-			strcpy(result.permissions, "REQUEST_DENIED");
-			return &result;
-		}
-		is_there = 0;
-	  }
-      count++;
-      token = strtok(NULL, ",");
+  result = NULL;
+  for (int i = 0; i < clients->size; i++) {
+    // verify if the user exists in db
+    // if so, generate an authorization token
+    if (!strcmp(argp->id, clients->clients[i])) {
+      result = generate_access_token(argp->id);
+      break;
     }
+  }
 
-	result.verify = 1;
-	strcpy(result.permissions, permission);
+  if (result == NULL) {
+    result = "USER_NOT_FOUND";
+  } else {
+    printf("  RequestToken = %s\n", result);
+    fflush(stdout);
+  }
 
-	return &result;
+  return &result;
 }
 
-access_response *
-request_access_token_1_svc(access *argp, struct svc_req *rqstp)
-{
-	static access_response  result;
+approve_response *approve_request_token_1_svc(approve *argp,
+                                              struct svc_req *rqstp) {
+  static approve_response result;
 
-	/*
-	 * insert server code here
-	 */
+  /*
+   * insert server code here
+   */
+  if (!prepare_approve_request_token_result(&result)) {
+    return NULL;
+  }
 
-	result.access_token = generate_access_token(argp->authorization_token.authorization_token);
-	if (atoi(argp->refresh) == 1) {
-		result.refresh_token = generate_access_token(result.access_token);	
-	} else {
-		result.refresh_token = calloc(16, sizeof(char));
-	}
-	result.valability = valability;
-	printf("  AccessToken = %s\n", result.access_token);
-	fflush(stdout);
+  strcpy(result.authorization_token, argp->authorization_token);
 
-	if (cl_info == NULL) {
-		cl_info = init_client_info();
-		size_cl_info = 0;
-	}
+  // get the permission from db which is related with the request of the client
+  char *permission = permissions->permissions[(permissions->current)++];
+  char *permission_aux = calloc(50, sizeof(char));
+  strcpy(permission_aux, permission);
 
-	for (int i = 0; i < size_cl_info; i++) {
-		if (strcmp(argp->id, cl_info[i].id) == 0) {
-			strcpy(cl_info[i].permissions, argp->authorization_token.permissions);
-			strcpy(cl_info[i].access_token, result.access_token);
-			if (atoi(argp->refresh) == 1) {
-				strcpy(cl_info[i].refresh_token, result.refresh_token);
-				printf("  RefreshToken = %s\n", result.refresh_token);
-				fflush(stdout);
-			}
-			strcpy(cl_info[i].refresh, argp->refresh);
-			cl_info[i].valability = valability;
+  // verify if the resources exists in resources.db
+  char *token;
+  token = strtok(permission_aux, ",");
+  int count = 0;
+  int is_there = 0;
+  while (token != NULL) {
+    if (count % 2 == 0) {
+      // verify resources' existence
+      for (int i = 0; i < resources->size; i++) {
+        if (!strcmp(token, resources->resources[i])) {
+          is_there = 1;
+          break;
+        }
+      }
+      // if the resource given does not exist, then the request will be denied
+      if (!is_there) {
+        result.verify = 2;
+        strcpy(result.permissions, "REQUEST_DENIED");
+        return &result;
+      }
+      is_there = 0;
+    }
+    count++;
+    token = strtok(NULL, ",");
+  }
+  // resources have been confirmed to be in the db
+  // and the signature was a success
+  result.verify = 1;
 
-			return &result;
-		}
-	}
-	strcpy(cl_info[size_cl_info].id, argp->id);
-	strcpy(cl_info[size_cl_info].permissions, argp->authorization_token.permissions);
-	strcpy(cl_info[size_cl_info].access_token, result.access_token);
+  // save permissions in the signature
+  strcpy(result.permissions, permission);
 
-	if (atoi(argp->refresh) == 1) {
-		strcpy(cl_info[size_cl_info].refresh_token, result.refresh_token);
-		printf("  RefreshToken = %s\n", result.refresh_token);
-		fflush(stdout);
-	}
-	strcpy(cl_info[size_cl_info].refresh, argp->refresh);
-	cl_info[size_cl_info++].valability = valability;
-	
-	return &result;
+  return &result;
 }
 
-char **
-validate_delegated_action_2_svc(action *argp, struct svc_req *rqstp)
-{
-	static char * result;
+access_response *request_access_token_1_svc(access *argp,
+                                            struct svc_req *rqstp) {
+  static access_response result;
 
-	/*
-	 * insert server code here
-	 */
-	result = calloc(30, sizeof(char));
+  /*
+   * insert server code here
+   */
 
-	if (size_cl_info != 0) {
-		for (int i = 0; i < size_cl_info; i++) {
-			if (strcmp(argp->access_token, cl_info[i].access_token) == 0) {
-				if (cl_info[i].valability > 0) {
-					(cl_info[i].valability)--;
+  result.access_token =
+      generate_access_token(argp->authorization_token.authorization_token);
 
-					int found_resource = 0;
-					for (int j = 0; j < resources->size; j++) {
-						if (strcmp(argp->source, resources->resources[j]) == 0) {
-							found_resource = 1;
-							break;
-						}
-					}
-					if (found_resource == 0) {
-						strcpy(result, "RESOURCE_NOT_FOUND");
-						printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
-												cl_info[i].valability);
-						fflush(stdout);
-						return &result;
-					}
-					
-					char *resources_aux = calloc(50, sizeof(char));
-					strcpy(resources_aux, cl_info[i].permissions);
+  // if the refresh mode is activated, then generate a refresh token
+  // else just allocate and leave it empty
+  if (atoi(argp->refresh) == 1) {
+    result.refresh_token = generate_access_token(result.access_token);
+  } else {
+    result.refresh_token = calloc(16, sizeof(char));
+    if (result.refresh_token == NULL) {
+      printf("Error while allocating memory fro the access token result!\n");
+      fflush(stdout);
+      free(result.refresh_token);
+      free(result.access_token);
+      return NULL;
+    }
+  }
 
-					char* token;
-    				token = strtok(resources_aux, ",");
+  result.valability = valability;
+  printf("  AccessToken = %s\n", result.access_token);
+  fflush(stdout);
 
-					int count = 0;
-					while (token != NULL) {
-						if (count % 2 == 0) {
-							if (strcmp(argp->source, token) == 0) {
-								token = strtok(NULL, ",");
+  // if the server didn't initiate a list of users and their information
+  // allocate it now
+  if (cl_info == NULL) {
+    cl_info = init_client_info();
+    if (cl_info == NULL) {
+      return NULL;
+    }
+    size_cl_info = 0;
+  }
 
-								for (int j = 0; j < strlen(token); j++) {
-									if (token[j] == 'X') {
-										token[j] = 'E';
-									}
-									if (argp->operation[0] == token[j]) {
-										strcpy(result, "PERMISSION_GRANTED");
-										printf("PERMIT (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
-											cl_info[i].valability);
-										fflush(stdout);
-										return &result;
-									}
-								}
+  if (modify_client_info(*argp, result)) {
+    return &result;
+  }
 
-								strcpy(result, "OPERATION_NOT_PERMITTED");
-								printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
-											cl_info[i].valability);
-								fflush(stdout);
-								return &result;
-							}
-						}
-						
-						token = strtok(NULL, ",");
-						count++;
-					}
-					strcpy(result, "OPERATION_NOT_PERMITTED");
-					printf("DENY (%s,%s,%s,%d)\n", argp->operation, argp->source, argp->access_token, 
-								cl_info[i].valability);
-					fflush(stdout);
-					return &result;
-				}
-				strcpy(result, "TOKEN_EXPIRED");
-				printf("DENY (%s,%s,,%d)\n", argp->operation, argp->source, cl_info[i].valability);
-				fflush(stdout);
-				return &result;
-			}
-		}
-	}
+  add_client_info(*argp, result);
 
-	strcpy(result, "PERMISSION_DENIED");
-	printf("DENY (%s,%s,,0)\n", argp->operation, argp->source);
-	fflush(stdout);
-	return &result;
+  return &result;
 }
 
-refresh_output *
-get_new_token_3_svc(refresh_input *argp, struct svc_req *rqstp)
-{
-	static refresh_output  result;
+char **validate_delegated_action_2_svc(action *argp, struct svc_req *rqstp) {
+  static char *result;
 
-	/*
-	 * insert server code here
-	 */
-	result.access_token = calloc(16, sizeof(char));
-	result.refresh_token = calloc(16, sizeof(char));
-	result.valability = valability;
+  /*
+   * insert server code here
+   */
+  result = calloc(30, sizeof(char));
+  if (result == NULL) {
+    printf("Error while allocating memory for the validation!\n");
+    fflush(stdout);
+    free(result);
+  }
 
-	printf("BEGIN %s AUTHZ REFRESH\n", argp->id);
-	fflush(stdout);
+  // if there are clients on the list
+  // the 'if' is for when a user tries to make an action and it is on the list
+  if (size_cl_info != 0 && generate_operation_status(result, *argp)) {
+    return &result;
+  }
 
-	for (int i = 0; i < size_cl_info; i++) {
-		if (strcmp(argp->id, cl_info[i].id) == 0 && strcmp(argp->refresh, cl_info[i].refresh_token) == 0) {
-			cl_info[i].valability = valability;
-			strcpy(cl_info[i].access_token, generate_access_token(argp->refresh));
-			strcpy(cl_info[i].refresh_token, generate_access_token(cl_info[i].access_token));
+  // user is not on the list
+  strcpy(result, "PERMISSION_DENIED");
+  printf("DENY (%s,%s,,0)\n", argp->operation, argp->source);
+  fflush(stdout);
+  return &result;
+}
 
-			strcpy(result.access_token, cl_info[i].access_token);
-			strcpy(result.refresh_token, cl_info[i].refresh_token);
+refresh_output *get_new_token_3_svc(refresh_input *argp,
+                                    struct svc_req *rqstp) {
+  static refresh_output result;
 
-			printf("  AccessToken = %s\n", result.access_token);
-			fflush(stdout);
-			printf("  RefreshToken = %s\n", result.refresh_token);
-			fflush(stdout);
-			break;
-		}
-	}
+  /*
+   * insert server code here
+   */
+  if (!prepare_new_token_result(&result)) {
+    return NULL;
+  }
+  result.valability = valability;
 
-	return &result;
+  printf("BEGIN %s AUTHZ REFRESH\n", argp->id);
+  fflush(stdout);
+
+  // search for the user with the correct id and refresh token
+  for (int i = 0; i < size_cl_info; i++) {
+    if (strcmp(argp->id, cl_info[i].id) == 0 &&
+        strcmp(argp->refresh, cl_info[i].refresh_token) == 0) {
+      // update the values
+      cl_info[i].valability = valability;
+      strcpy(cl_info[i].access_token, generate_access_token(argp->refresh));
+      strcpy(cl_info[i].refresh_token,
+             generate_access_token(cl_info[i].access_token));
+
+      strcpy(result.access_token, cl_info[i].access_token);
+      strcpy(result.refresh_token, cl_info[i].refresh_token);
+
+      printf("  AccessToken = %s\n", result.access_token);
+      fflush(stdout);
+      printf("  RefreshToken = %s\n", result.refresh_token);
+      fflush(stdout);
+      break;
+    }
+  }
+
+  return &result;
 }

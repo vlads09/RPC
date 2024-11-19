@@ -4,222 +4,199 @@
  * as a guideline for developing your own functions.
  */
 
+#include "Client_utils.h"
 #include "OAuth.h"
-#include "OAuth_utils.h"
 
 ClientSideInfo *clients_info;
 int current_clients_info = 0;
 
+void grade_prog_1(char *host, char *id, char *refresh) {
+  CLIENT *clnt;
+  char **result_1;
+  authorization request_authorization_token_1_arg;
+  approve_response *result_2;
+  approve approve_request_token_1_arg;
+  access_response *result_3;
+  access request_access_token_1_arg;
 
-void
-grade_prog_1(char *host, char *id, char *refresh)
-{
-	CLIENT *clnt;
-	char * *result_1;
-	authorization  request_authorization_token_1_arg;
-	approve_response  *result_2;
-	approve  approve_request_token_1_arg;
-	access_response  *result_3;
-	access  request_access_token_1_arg;
+#ifndef DEBUG
+  clnt = clnt_create(host, GRADE_PROG, GRADE_VERS, "udp");
+  if (clnt == NULL) {
+    clnt_pcreateerror(host);
+    exit(1);
+  }
+#endif /* DEBUG */
 
-#ifndef	DEBUG
-	clnt = clnt_create (host, GRADE_PROG, GRADE_VERS, "udp");
-	if (clnt == NULL) {
-		clnt_pcreateerror (host);
-		exit (1);
-	}
-#endif	/* DEBUG */
+  if (!prepare_request_token_args(&request_authorization_token_1_arg, id)) {
+    clnt_perror(clnt, "call failed");
+    exit(1);
+  }
 
-	request_authorization_token_1_arg.id = calloc(16, sizeof(char));
-	strcpy(request_authorization_token_1_arg.id, id);
+  result_1 =
+      request_authorization_token_1(&request_authorization_token_1_arg, clnt);
 
-	result_1 = request_authorization_token_1(&request_authorization_token_1_arg, clnt);
+  if (result_1 == (char **)NULL) {
+    clnt_perror(clnt, "call failed");
+    exit(1);
+  }
 
-	if (result_1 == (char **) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
+  if (strcmp(*result_1, "USER_NOT_FOUND")) {
+    if (!prepare_approve_request_token_args(&approve_request_token_1_arg,
+                                            *result_1)) {
+      clnt_perror(clnt, "call failed");
+      exit(1);
+    }
 
-	if (strcmp(*result_1, "USER_NOT_FOUND") != 0) {
-		approve_request_token_1_arg.authorization_token = calloc(16, sizeof(char));
-		strcpy(approve_request_token_1_arg.authorization_token, *result_1);
+    result_2 = approve_request_token_1(&approve_request_token_1_arg, clnt);
+    if (result_2 == (approve_response *)NULL) {
+      clnt_perror(clnt, "call failed");
+      exit(1);
+    }
 
-		result_2 = approve_request_token_1(&approve_request_token_1_arg, clnt);
-		if (result_2 == (approve_response *) NULL) {
-			clnt_perror (clnt, "call failed");
-		}
+    if (result_2->verify == 2) {
+      printf("%s\n", result_2->permissions);
+    } else {
+      if (!prepare_request_access_token_args(&request_access_token_1_arg,
+                                             *result_1, result_2->permissions,
+                                             id, refresh, result_2->verify)) {
+        clnt_perror(clnt, "call failed");
+        exit(1);
+      }
 
-		if (result_2->verify == 2) {
-			printf("%s\n", result_2->permissions);
-		} else {
-			request_access_token_1_arg.authorization_token.authorization_token = calloc(16, sizeof(char));
-			request_access_token_1_arg.authorization_token.permissions = calloc(50, sizeof(char));
-			request_access_token_1_arg.id = calloc(16, sizeof(char));
-			request_access_token_1_arg.refresh = calloc(2, sizeof(char));
-
-			strcpy(request_access_token_1_arg.authorization_token.authorization_token, *result_1);
-			strcpy(request_access_token_1_arg.authorization_token.permissions, result_2->permissions);
-			strcpy(request_access_token_1_arg.id, id);
-			strcpy(request_access_token_1_arg.refresh, refresh);
-			request_access_token_1_arg.authorization_token.verify = result_2->verify;
-
-			result_3 = request_access_token_1(&request_access_token_1_arg, clnt);
-			if (result_3 == (access_response *) NULL) {
-				clnt_perror (clnt, "call failed");
-			} else {
-				if (atoi(refresh) == 0) {
-					printf("%s -> %s\n", result_2->authorization_token, result_3->access_token);	
-				} else if (atoi(refresh) == 1) {
-					printf("%s -> %s,%s\n", result_2->authorization_token, result_3->access_token, result_3->refresh_token);
-				}
-
-				int already_exists = 0;
-				for (int i = 0; i < current_clients_info; i++) {
-					if (strcmp(id, clients_info[i].id) == 0) {
-						already_exists = 1;
-						strcpy(clients_info[i].access_token, result_3->access_token);
-						strcpy(clients_info[i].refresh_token, result_3->refresh_token);
-						clients_info[i].refresh = atoi(refresh);
-						clients_info[i].valability = result_3->valability;
-					}
-				}
-				if (already_exists == 0) {
-					strcpy(clients_info[current_clients_info].id, id);
-					strcpy(clients_info[current_clients_info].access_token, result_3->access_token);
-					strcpy(clients_info[current_clients_info].refresh_token, result_3->refresh_token);
-					clients_info[current_clients_info].refresh = atoi(refresh);
-					clients_info[current_clients_info++].valability = result_3->valability;
-				}
-			}
-		}
-	} else {
-		printf("%s\n", *result_1);
-	}
-	
-
-	
-#ifndef	DEBUG
-	clnt_destroy (clnt);
-#endif	 /* DEBUG */
+      result_3 = request_access_token_1(&request_access_token_1_arg, clnt);
+      if (result_3 == (access_response *)NULL) {
+        clnt_perror(clnt, "call failed");
+      } else {
+        print_tokens(refresh, *result_1, *result_3);
+        add_or_modify_client(clients_info, &current_clients_info, id, refresh,
+                             *result_3);
+      }
+    }
+  } else {
+    // user was not found
+    printf("%s\n", *result_1);
+  }
+#ifndef DEBUG
+  clnt_destroy(clnt);
+#endif /* DEBUG */
 }
 
+void grade_prog_2(char *host, char *op, char *resource, char *access_token) {
+  CLIENT *clnt;
+  char **result_1;
+  action validate_delegated_action_2_arg;
 
-void
-grade_prog_2(char *host, char *op, char *resource, char *id, char *access_token)
-{
-	CLIENT *clnt;
-	char * *result_1;
-	action  validate_delegated_action_2_arg;
+#ifndef DEBUG
+  clnt = clnt_create(host, GRADE_PROG, GRADE_VERS_2, "udp");
+  if (clnt == NULL) {
+    clnt_pcreateerror(host);
+    exit(1);
+  }
+#endif /* DEBUG */
+  if (!prepare_validate_delegated_action(&validate_delegated_action_2_arg,
+                                         access_token, op, resource)) {
+    clnt_perror(clnt, "call failed");
+    exit(1);
+  }
 
-#ifndef	DEBUG
-	clnt = clnt_create (host, GRADE_PROG, GRADE_VERS_2, "udp");
-	if (clnt == NULL) {
-		clnt_pcreateerror (host);
-		exit (1);
-	}
-#endif	/* DEBUG */
-	validate_delegated_action_2_arg.access_token = calloc(16, sizeof(char));
-	validate_delegated_action_2_arg.operation = calloc(10, sizeof(char));
-	validate_delegated_action_2_arg.source = calloc(15, sizeof(char));
+  result_1 =
+      validate_delegated_action_2(&validate_delegated_action_2_arg, clnt);
+  if (result_1 == (char **)NULL) {
+    clnt_perror(clnt, "call failed");
+  }
+  // the server verdict
+  printf("%s\n", *result_1);
 
-	strcpy(validate_delegated_action_2_arg.access_token, access_token);
-	strcpy(validate_delegated_action_2_arg.operation, op);
-	strcpy(validate_delegated_action_2_arg.source, resource);
-	
-	result_1 = validate_delegated_action_2(&validate_delegated_action_2_arg, clnt);
-	if (result_1 == (char **) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-	printf("%s\n", *result_1);
-	
-#ifndef	DEBUG
-	clnt_destroy (clnt);
-#endif	 /* DEBUG */
+#ifndef DEBUG
+  clnt_destroy(clnt);
+#endif /* DEBUG */
 }
 
+void grade_prog_3(char *host, char *id, char *refresh_token) {
+  CLIENT *clnt;
+  refresh_output *result_1;
+  refresh_input get_new_token_3_arg;
 
-void
-grade_prog_3(char *host, char *id, char *refresh_token)
-{
-	CLIENT *clnt;
-	refresh_output  *result_1;
-	refresh_input  get_new_token_3_arg;
+#ifndef DEBUG
+  clnt = clnt_create(host, GRADE_PROG, GRADE_VERS_3, "udp");
+  if (clnt == NULL) {
+    clnt_pcreateerror(host);
+    exit(1);
+  }
+#endif /* DEBUG */
+  if (!prepare_get_new_token(&get_new_token_3_arg, id, refresh_token)) {
+    clnt_perror(clnt, "call failed");
+    exit(1);
+  }
 
-#ifndef	DEBUG
-	clnt = clnt_create (host, GRADE_PROG, GRADE_VERS_3, "udp");
-	if (clnt == NULL) {
-		clnt_pcreateerror (host);
-		exit (1);
-	}
-#endif	/* DEBUG */
-	get_new_token_3_arg.id = calloc(16, sizeof(char));
-	get_new_token_3_arg.refresh = calloc(16, sizeof(char));
+  result_1 = get_new_token_3(&get_new_token_3_arg, clnt);
+  if (result_1 == (refresh_output *)NULL) {
+    clnt_perror(clnt, "call failed");
+  }
 
-	strcpy(get_new_token_3_arg.id, id);
-	strcpy(get_new_token_3_arg.refresh, refresh_token);
+  modify_access_token(clients_info, current_clients_info, id, *result_1);
 
-	result_1 = get_new_token_3(&get_new_token_3_arg, clnt);
-	if (result_1 == (refresh_output *) NULL) {
-		clnt_perror (clnt, "call failed");
-	}
-
-	for (int i = 0; i < current_clients_info; i++) {
-		if (strcmp(id, clients_info[i].id) == 0) {
-			strcpy(clients_info[i].access_token, result_1->access_token);
-			strcpy(clients_info[i].refresh_token, result_1->refresh_token);
-			clients_info[i].valability = result_1->valability;
-		}
-	}
-
-#ifndef	DEBUG
-	clnt_destroy (clnt);
-#endif	 /* DEBUG */
+#ifndef DEBUG
+  clnt_destroy(clnt);
+#endif /* DEBUG */
 }
 
+int main(int argc, char *argv[]) {
+  char *host;
+  char *path;
+  if (argc < 2) {
+    printf("usage: %s server_host\n", argv[0]);
+    exit(1);
+  }
+  host = argv[1];
+  path = argv[2];
 
-int
-main (int argc, char *argv[])
-{
-	char *host;
-	char *path;
-	if (argc < 2) {
-		printf ("usage: %s server_host\n", argv[0]);
-		exit (1);
-	}
-	host = argv[1];
-	path = argv[2];
+  int size_orders = 0;
+  ClientOrder *orders = get_orders(path, &size_orders);
+  clients_info = init_clients_info();
+  if (clients_info == NULL) {
+    exit(0);
+  }
 
-	int size_orders = 0;
-	ClientOrder *orders = get_orders(path, &size_orders);
-	clients_info = calloc(50, sizeof(ClientSideInfo));
-	for (int i = 0; i< size_orders; i++) {
-		char *id = orders[i].id;
-		char *action = orders[i].action;
-		char *details = orders[i].details;
+  for (int i = 0; i < size_orders; i++) {
+    char *id = orders[i].id;
+    char *action = orders[i].action;
+    char *details = orders[i].details;
 
-		if (strcmp(action, "REQUEST") == 0) {
-			grade_prog_1(host, id, details);
-		} else {
-			for (int j = 0; j < current_clients_info; j++) {
-				if (strcmp(clients_info[j].id, id) == 0 && clients_info[j].valability == 0 
-					&& clients_info[j].refresh == 1) {
-						grade_prog_3(host, id, clients_info[j].refresh_token);
-						break;
-					}
-			}
-			int found = 0;
-			for (int j = 0; j < current_clients_info; j++) {
-				if (strcmp(id, clients_info[j].id) == 0) {
-					clients_info[j].valability--;
-					grade_prog_2(host, action, details, id, clients_info[j].access_token);
-					found = 1;
-					break;
-				}
-			}
-			if (found == 0) {
-				grade_prog_2(host, action, details, id, "");
-			}
-		}
-	}
+    if (strcmp(action, "REQUEST") == 0) {
+      // get the access_token and refresh token if the user opted for it
+      grade_prog_1(host, id, details);
+    } else {
+      // if the valability has expired and the user has a refresh token, then
+      // update the access token as well as the refresh token
+      for (int j = 0; j < current_clients_info; j++) {
+        if (strcmp(clients_info[j].id, id) == 0 &&
+            clients_info[j].valability == 0 && clients_info[j].refresh == 1) {
+          grade_prog_3(host, id, clients_info[j].refresh_token);
+          break;
+        }
+      }
 
-exit (0);
+      int found = 0;
+      // find the client and get the access token
+      for (int j = 0; j < current_clients_info; j++) {
+        if (strcmp(id, clients_info[j].id) == 0) {
+          clients_info[j].valability--;
+          // send the operation to the server
+          grade_prog_2(host, action, details, clients_info[j].access_token);
+          found = 1;
+          break;
+        }
+      }
+      if (found == 0) {
+        // if there is an user with no access, then send empty
+        // and a message error will be received
+        grade_prog_2(host, action, details, "");
+      }
+    }
+  }
+
+  free(clients_info);
+  free(orders);
+  exit(0);
 }
